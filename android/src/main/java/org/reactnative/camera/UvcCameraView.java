@@ -7,7 +7,7 @@ import android.graphics.Color;
 import android.media.CamcorderProfile;
 import android.media.MediaActionSound;
 import android.os.Build;
-import android.support.v4.content.ContextCompat;
+import androidx.core.content.ContextCompat;
 import android.util.SparseArray;
 import android.view.View;
 import com.facebook.react.bridge.*;
@@ -83,11 +83,11 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
       }
 
       @Override
-      public void onPictureTaken(CameraView cameraView, final byte[] data) {
+      public void onPictureTaken(CameraView cameraView, final byte[] data, int deviceOrientation) {
         Promise promise = mPictureTakenPromises.poll();
         ReadableMap options = mPictureTakenOptions.remove(promise);
         final File cacheDirectory = mPictureTakenDirectories.remove(promise);
-        new ResolveTakenPictureAsyncTask(data, promise, options, cacheDirectory).execute();
+        new ResolveTakenPictureAsyncTask(data, promise, options, cacheDirectory, deviceOrientation, (PictureSavedDelegate) UvcCameraView.this).execute();
       }
 
       @Override
@@ -120,38 +120,38 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
 
       @Override
       public void onFramePreview(CameraView cameraView, byte[] data, int width, int height, int rotation) {
-        int correctRotation = RNCameraViewHelper.getCorrectCameraRotation(rotation, getFacing());
-        int correctWidth = width;
-        int correctHeight = height;
-        byte[] correctData = data;
-        if (correctRotation == 90) {
-          correctWidth = height;
-          correctHeight = width;
-          correctData = rotateImage(data, correctHeight, correctWidth);
-        }
-        if (mShouldScanBarCodes && !barCodeScannerTaskLock && cameraView instanceof BarCodeScannerAsyncTaskDelegate) {
-          barCodeScannerTaskLock = true;
-          BarCodeScannerAsyncTaskDelegate delegate = (BarCodeScannerAsyncTaskDelegate) cameraView;
-          new BarCodeScannerAsyncTask(delegate, mMultiFormatReader, correctData, correctWidth, correctHeight).execute();
-        }
-
-        if (mShouldDetectFaces && !faceDetectorTaskLock && cameraView instanceof FaceDetectorAsyncTaskDelegate) {
-          faceDetectorTaskLock = true;
-          FaceDetectorAsyncTaskDelegate delegate = (FaceDetectorAsyncTaskDelegate) cameraView;
-          new FaceDetectorAsyncTask(delegate, mFaceDetector, correctData, correctWidth, correctHeight, correctRotation).execute();
-        }
-
-        if (mShouldGoogleDetectBarcodes && !googleBarcodeDetectorTaskLock && cameraView instanceof BarcodeDetectorAsyncTaskDelegate) {
-          googleBarcodeDetectorTaskLock = true;
-          BarcodeDetectorAsyncTaskDelegate delegate = (BarcodeDetectorAsyncTaskDelegate) cameraView;
-          new BarcodeDetectorAsyncTask(delegate, mGoogleBarcodeDetector, correctData, correctWidth, correctHeight, correctRotation).execute();
-        }
-
-        if (mShouldRecognizeText && !textRecognizerTaskLock && cameraView instanceof TextRecognizerAsyncTaskDelegate) {
-          textRecognizerTaskLock = true;
-          TextRecognizerAsyncTaskDelegate delegate = (TextRecognizerAsyncTaskDelegate) cameraView;
-          new TextRecognizerAsyncTask(delegate, mTextRecognizer, correctData, correctWidth, correctHeight, correctRotation).execute();
-        }
+//        int correctRotation = RNCameraViewHelper.getCorrectCameraRotation(rotation, getFacing());
+//        int correctWidth = width;
+//        int correctHeight = height;
+//        byte[] correctData = data;
+//        if (correctRotation == 90) {
+//          correctWidth = height;
+//          correctHeight = width;
+//          correctData = rotateImage(data, correctHeight, correctWidth);
+//        }
+//        if (mShouldScanBarCodes && !barCodeScannerTaskLock && cameraView instanceof BarCodeScannerAsyncTaskDelegate) {
+//          barCodeScannerTaskLock = true;
+//          BarCodeScannerAsyncTaskDelegate delegate = (BarCodeScannerAsyncTaskDelegate) cameraView;
+//          new BarCodeScannerAsyncTask(delegate, mMultiFormatReader, correctData, correctWidth, correctHeight).execute();
+//        }
+//
+//        if (mShouldDetectFaces && !faceDetectorTaskLock && cameraView instanceof FaceDetectorAsyncTaskDelegate) {
+//          faceDetectorTaskLock = true;
+//          FaceDetectorAsyncTaskDelegate delegate = (FaceDetectorAsyncTaskDelegate) cameraView;
+//          new FaceDetectorAsyncTask(delegate, mFaceDetector, correctData, correctWidth, correctHeight, correctRotation).execute();
+//        }
+//
+//        if (mShouldGoogleDetectBarcodes && !googleBarcodeDetectorTaskLock && cameraView instanceof BarcodeDetectorAsyncTaskDelegate) {
+//          googleBarcodeDetectorTaskLock = true;
+//          BarcodeDetectorAsyncTaskDelegate delegate = (BarcodeDetectorAsyncTaskDelegate) cameraView;
+//          new BarcodeDetectorAsyncTask(delegate, mGoogleBarcodeDetector, correctData, correctWidth, correctHeight, correctRotation).execute();
+//        }
+//
+//        if (mShouldRecognizeText && !textRecognizerTaskLock && cameraView instanceof TextRecognizerAsyncTaskDelegate) {
+//          textRecognizerTaskLock = true;
+//          TextRecognizerAsyncTaskDelegate delegate = (TextRecognizerAsyncTaskDelegate) cameraView;
+//          new TextRecognizerAsyncTask(delegate, mTextRecognizer, correctData, correctWidth, correctHeight, correctRotation).execute();
+//        }
       }
     });
   }
@@ -286,10 +286,15 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
       return;
     }
 
-    RNCameraViewHelper.emitBarCodeReadEvent(this, barCode);
+    // RNCameraViewHelper.emitBarCodeReadEvent(this, barCode);
   }
 
-  public void onBarCodeScanningTaskCompleted() {
+    @Override
+    public void onBarCodeRead(Result barCode, int width, int height, byte[] imageData) {
+
+    }
+
+    public void onBarCodeScanningTaskCompleted() {
     barCodeScannerTaskLock = false;
     mMultiFormatReader.reset();
   }
@@ -350,10 +355,15 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
     SparseArray<Face> facesDetected = facesReported == null ? new SparseArray<Face>() : facesReported;
 
     ImageDimensions dimensions = new ImageDimensions(sourceWidth, sourceHeight, sourceRotation, getFacing());
-    RNCameraViewHelper.emitFacesDetectedEvent(this, facesDetected, dimensions);
+    // RNCameraViewHelper.emitFacesDetectedEvent(this, facesDetected, dimensions);
   }
 
-  public void onFaceDetectionError(RNFaceDetector faceDetector) {
+    @Override
+    public void onFacesDetected(WritableArray faces) {
+
+    }
+
+    public void onFaceDetectionError(RNFaceDetector faceDetector) {
     if (!mShouldDetectFaces) {
       return;
     }
@@ -395,10 +405,15 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
 
     SparseArray<Barcode> barcodesDetected = barcodesReported == null ? new SparseArray<Barcode>() : barcodesReported;
 
-    RNCameraViewHelper.emitBarcodesDetectedEvent(this, barcodesDetected);
+    // RNCameraViewHelper.emitBarcodesDetectedEvent(this, barcodesDetected);
   }
 
-  public void onBarcodeDetectionError(RNBarcodeDetector barcodeDetector) {
+    @Override
+    public void onBarcodesDetected(WritableArray barcodes, int width, int height, byte[] imageData) {
+
+    }
+
+    public void onBarcodeDetectionError(RNBarcodeDetector barcodeDetector) {
     if (!mShouldGoogleDetectBarcodes) {
       return;
     }
@@ -419,7 +434,6 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
     setScanning(mShouldDetectFaces || mShouldGoogleDetectBarcodes || mShouldScanBarCodes || mShouldRecognizeText);
   }
 
-  @Override
   public void onTextRecognized(SparseArray<TextBlock> textBlocks, int sourceWidth, int sourceHeight, int sourceRotation) {
     if (!mShouldRecognizeText) {
       return;
@@ -428,10 +442,15 @@ public class UvcCameraView extends CameraView implements LifecycleEventListener,
     SparseArray<TextBlock> textBlocksDetected = textBlocks == null ? new SparseArray<TextBlock>() : textBlocks;
     ImageDimensions dimensions = new ImageDimensions(sourceWidth, sourceHeight, sourceRotation, getFacing());
 
-    RNCameraViewHelper.emitTextRecognizedEvent(this, textBlocksDetected, dimensions);
+    // RNCameraViewHelper.emitTextRecognizedEvent(this, textBlocksDetected, dimensions);
   }
 
-  @Override
+    @Override
+    public void onTextRecognized(WritableArray serializedData) {
+
+    }
+
+    @Override
   public void onTextRecognizerTaskCompleted() {
     textRecognizerTaskLock = false;
   }

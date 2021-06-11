@@ -28,6 +28,8 @@ android {
     minSdkVersion 16
     targetSdkVersion rootProject.hasProperty('targetSdkVersion') ? rootProject.targetSdkVersion : DEFAULT_TARGET_SDK_VERSION
 
+    missingDimensionStrategy 'react-native-camera', 'general'
+
     versionCode 1
     versionName "1.0.0"
   }
@@ -51,6 +53,7 @@ repositories {
 }
 
 dependencies {
+  implementation project(path: ':react-native-camera')
   def googlePlayServicesVersion = rootProject.hasProperty('googlePlayServicesVersion')  ? rootProject.googlePlayServicesVersion : DEFAULT_GOOGLE_PLAY_SERVICES_VERSION
   def supportLibVersion = rootProject.hasProperty('supportLibVersion')  ? rootProject.supportLibVersion : DEFAULT_SUPPORT_LIBRARY_VERSION
 
@@ -64,5 +67,4 @@ dependencies {
   implementation "com.android.support:support-v4:$supportLibVersion"
 
   compile project(':usbCameraCommon')
-  compile project(':react-native-camera')
 }
